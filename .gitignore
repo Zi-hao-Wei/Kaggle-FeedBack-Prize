@@ -1,0 +1,6 @@
+out*
+*.zip
+/feedback-prize-2021/
+*.csv
+V*
+/__pycache__/
