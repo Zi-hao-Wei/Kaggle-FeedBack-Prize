@@ -6,6 +6,7 @@ from sklearn.metrics import accuracy_score
 import warnings
 from inferance import inferencePipeline
 warnings.filterwarnings("ignore")
+
 def train(model,optimizer,config,epochs):
     training_set,training_loader,testing_set,testing_loader = getSets()
     best=0
@@ -70,11 +71,4 @@ def train_epoch(model,training_loader,optimizer,config):
     print(f"Training loss epoch: {epoch_loss}")
     print(f"Training accuracy epoch: {tr_accuracy}")
 
-if __name__ == "__main__":
-    config = getConfig()
-
-    model = BigBirdForTokenClassification.from_pretrained(config["model_name"],num_labels=15)
-    model.to(config["device"])
-    optimizer = torch.optim.Adam(params=model.parameters(),lr=config["learning_rates"][0])
-    train(model,optimizer,config,config['epochs'])
-    torch.save(model,"./Vlast.pth")
+if __name__=="__main__":

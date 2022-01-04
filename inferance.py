@@ -182,6 +182,7 @@ def inferencePipeline(test_dataset,testing_loader,model,config):  # note this do
     print()
     print('Overall', np.mean(f1s))
     print()
+    return np.mean(f1s)
 
 if __name__ == "__main__":
     config = getConfig()

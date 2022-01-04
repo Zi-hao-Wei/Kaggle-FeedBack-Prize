@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.nn.functional as F
+from transformers import Trainer
 
 
 class MultiFocalLoss(nn.Module):
@@ -88,6 +89,17 @@ class MultiFocalLoss(nn.Module):
             loss = loss.sum()
         return loss
 
+
+class FocalLossTrainer(Trainer):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.focalloss=MultiFocalLoss()
+    def compute_loss(self,model,inputs,return_outputs=False):
+        labels = inputs.get("labels")
+        outputs = model(**input)
+        logits = outputs.get("logits")
+        loss = self.focalloss(logits,labels)
+        return (loss,outputs) if return_outputs else loss 
 
 if __name__ == "__main__":
     Predict = torch.tensor([[0, 0, 1000000], [1000000, 0, 0]]).float()
