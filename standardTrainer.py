@@ -34,8 +34,11 @@ def compute_metrics(p):
 
 if __name__ == "__main__":
     config = getConfig()
-    model = AutoModelForTokenClassification.from_pretrained(
-        config["model_name"], num_labels=15)
+    Step=16500
+    checkpoint=f".\output\checkpoint-{Step}"
+    model = AutoModelForTokenClassification.from_pretrained(checkpoint,num_labels=15)
+    # model = AutoModelForTokenClassification.from_pretrained(
+        # config["model_name"], num_labels=15)
     model.to(config["device"])
 
     # Define Trainer
@@ -58,6 +61,6 @@ if __name__ == "__main__":
         compute_metrics=compute_metrics,
     )
 
-    trainer.train()
+    trainer.train(f"checkpoint-{Step}")
     trainer.evaluate()
     model.save_pretained("BigBirdFinetune")
