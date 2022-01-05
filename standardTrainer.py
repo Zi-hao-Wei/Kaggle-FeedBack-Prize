@@ -1,74 +1,53 @@
+from focalloss import FocalLossTrainer
 from Config import getConfig
 from Dataset import getSets
-from transformers import BigBirdForTokenClassification, BigBirdConfig,TrainingArguments, Trainer
+from transformers import BigBirdForTokenClassification, BigBirdConfig, TrainingArguments, Trainer
 import torch
-from sklearn.metrics import accuracy_score
+import numpy as np
 import warnings
 from inferance import inferencePipeline
+from sklearn import metrics
 warnings.filterwarnings("ignore")
 
-def train(model,optimizer,config,epochs):
-    training_set,training_loader,testing_set,testing_loader = getSets()
-    best=0
-    for e in range(epochs):
-        print("Epoch",e,"begins:")
-        train_epoch(model,training_loader,optimizer,config)
-        result=inferencePipeline(testing_set,testing_loader,model,config)
-        if(result>best):
-            torch.save(model,"V_"+str(result)+".pth")
-        
-    
-def train_epoch(model,training_loader,optimizer,config):
-    tr_loss, tr_accuracy = 0, 0
-    nb_tr_examples, nb_tr_steps = 0, 0   
-    # put model in training mode
-    model.train()
-    
-    for idx, batch in enumerate(training_loader):
-        
-        ids = batch['input_ids'].to(config['device'], dtype = torch.long)
-        mask = batch['attention_mask'].to(config['device'], dtype = torch.long)
-        
-        labels = batch['labels'].to(config['device'], dtype = torch.long)
-        # print(labels)
-        loss, tr_logits = model(input_ids=ids, attention_mask=mask, labels=labels,
-                               return_dict=False)
-        tr_loss += loss.item()
 
-        nb_tr_steps += 1
-        nb_tr_examples += labels.size(0)
-        
-        if idx % 200==0:
-            loss_step = tr_loss/nb_tr_steps
-            print(f"Training loss after {idx:04d} training steps: {loss_step}")
-           
-        # compute training accuracy
-        flattened_targets = labels.view(-1) # shape (batch_size * seq_len,)
-        active_logits = tr_logits.view(-1, model.num_labels) # shape (batch_size * seq_len, num_labels)
-        flattened_predictions = torch.argmax(active_logits, axis=1) # shape (batch_size * seq_len,)
-        
-        # only compute accuracy at active labels
-        active_accuracy = labels.view(-1) != -100 # shape (batch_size, seq_len)
-        
-        labels = torch.masked_select(flattened_targets, active_accuracy)
-        predictions = torch.masked_select(flattened_predictions, active_accuracy)
+def compute_metrics(p):
+    pred, labels = p
+    pred = np.argmax(pred, axis=1)
+    print(pred)
+    accuracy = metrics.accuracy_score(y_true=labels, y_pred=pred)
+    recall = metrics.recall_score(y_true=labels, y_pred=pred)
+    precision = metrics.precision_score(y_true=labels, y_pred=pred)
+    f1 = metrics.f1_score(y_true=labels, y_pred=pred)
 
-        tmp_tr_accuracy = accuracy_score(labels.cpu().numpy(), predictions.cpu().numpy())
-        tr_accuracy += tmp_tr_accuracy
-    
-        # gradient clipping
-        torch.nn.utils.clip_grad_norm_(
-            parameters=model.parameters(), max_norm=config['max_grad_norm']
-        )
-        
-        # backward pass
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+    return {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
 
-    epoch_loss = tr_loss / nb_tr_steps
-    tr_accuracy = tr_accuracy / nb_tr_steps
-    print(f"Training loss epoch: {epoch_loss}")
-    print(f"Training accuracy epoch: {tr_accuracy}")
 
-if __name__=="__main__":
+if __name__ == "__main__":
+    config = getConfig()
+    model = BigBirdForTokenClassification.from_pretrained(
+        config["model_name"], num_labels=15)
+    model.to(config["device"])
+
+    # Define Trainer
+    args = TrainingArguments(
+        output_dir="output",
+        evaluation_strategy="steps",
+        eval_steps=500,
+        per_device_train_batch_size=config["train_batch_size"],
+        per_device_eval_batch_size=config["valid_batch_size"],
+        num_train_epochs=config["epochs"],
+        load_best_model_at_end=True,
+    )
+    train_dataset, val_dataset = getSets(standard=True)
+
+    trainer = FocalLossTrainer(
+        model=model,
+        args=args,
+        train_dataset=train_dataset,
+        eval_dataset=val_dataset,
+        compute_metrics=compute_metrics,
+    )
+
+    trainer.train()
+    trainer.evaluate()
+    model.save_pretained("BigBirdFinetune")
