@@ -133,6 +133,9 @@ def getSets(standard=False):
     data = train_text_df[['id', 'text', 'entities']]
     train_dataset = data.loc[data['id'].isin(
         IDS[train_idx]), ['text', 'entities']].reset_index(drop=True)
+ 
+    # valid_idx = valid_idx[0:12]
+ 
     test_dataset = data.loc[data['id'].isin(
         IDS[valid_idx])].reset_index(drop=True)
 
@@ -143,7 +146,9 @@ def getSets(standard=False):
     tokenizer = AutoTokenizer.from_pretrained(config['model_name'])
     training_set = dataset(train_dataset, tokenizer,
                            config['max_length'], False,standard)
-    testing_set = dataset(test_dataset, tokenizer, config['max_length'], True,standard)
+
+    testing_set = dataset(test_dataset, tokenizer, config['max_length'], not standard, standard)
+
 
     if standard:
         return training_set, testing_set

@@ -12,13 +12,23 @@ warnings.filterwarnings("ignore")
 
 def compute_metrics(p):
     pred, labels = p
-    pred = np.argmax(pred, axis=1)
-    print(pred)
-    accuracy = metrics.accuracy_score(y_true=labels, y_pred=pred)
-    recall = metrics.recall_score(y_true=labels, y_pred=pred)
-    precision = metrics.precision_score(y_true=labels, y_pred=pred)
-    f1 = metrics.f1_score(y_true=labels, y_pred=pred)
+    # print(pred.shape)
+    # print(labels.shape)
+    pred = np.argmax(pred, axis=2)
+    pred = pred.flatten()
+    labels = labels.flatten()
 
+    select=[labels!=-100]
+
+    labels=np.select(select,[labels])
+    pred=np.select(select,[pred])
+
+
+    accuracy = metrics.accuracy_score(y_true=labels, y_pred=pred)
+    recall = metrics.recall_score(y_true=labels, y_pred=pred,average="weighted")
+    precision = metrics.precision_score(y_true=labels, y_pred=pred,average="weighted")
+    f1 = metrics.f1_score(y_true=labels, y_pred=pred,average="weighted")
+    print(accuracy,f1)
     return {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
 
 
