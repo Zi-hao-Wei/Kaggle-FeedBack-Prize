@@ -30,7 +30,7 @@ def loadFromCSV(path=f'./train_NER.csv'):
 
 
 class dataset(Dataset):
-    def __init__(self, dataframe, tokenizer, max_len, get_wids):
+    def __init__(self, dataframe, tokenizer, max_len, get_wids,standard=False):
         self.len = len(dataframe)
         self.data = dataframe
         self.tokenizer = tokenizer
@@ -42,6 +42,7 @@ class dataset(Dataset):
         self.labels_to_ids = {v: k for k, v in enumerate(output_labels)}
         self.ids_to_labels = {k: v for k, v in enumerate(output_labels)}
         print(self.ids_to_labels)
+        self.standard=standard
 
     def __getitem__(self, index):
         # GET TEXT AND WORD LABELS
@@ -101,7 +102,11 @@ class dataset(Dataset):
         if self.get_wids:
             item['wids'] = torch.as_tensor(split_word_ids)
 
-        return item
+        if(self.standard):
+            del item["offset_mapping"]
+            return item
+        else:
+            return item
 
     def __len__(self):
         return self.len
@@ -137,8 +142,8 @@ def getSets(standard=False):
 
     tokenizer = AutoTokenizer.from_pretrained(config['model_name'])
     training_set = dataset(train_dataset, tokenizer,
-                           config['max_length'], False)
-    testing_set = dataset(test_dataset, tokenizer, config['max_length'], True)
+                           config['max_length'], False,standard)
+    testing_set = dataset(test_dataset, tokenizer, config['max_length'], True,standard)
 
     if standard:
         return training_set, testing_set

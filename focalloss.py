@@ -21,7 +21,7 @@ class MultiFocalLoss(nn.Module):
     :param size_average: (bool, optional) By default, the losses are averaged over each loss element in the batch.
     """
 
-    def __init__(self, num_class, alpha=None, gamma=2, balance_index=-1, smooth=None, size_average=True):
+    def __init__(self, num_class=15, alpha=None, gamma=2, balance_index=-1, smooth=None, size_average=True):
         super(MultiFocalLoss, self).__init__()
         self.num_class = num_class
         self.alpha = alpha
@@ -49,17 +49,33 @@ class MultiFocalLoss(nn.Module):
 
     def forward(self, input, target):
         """
-          input is B*C,
-          target is B
+          input is B*N*C,
+          target is B*N
         """
-        logit = F.softmax(input, dim=1)
+        # print(logit.shape)
+        logit = F.softmax(input, dim=2)
+        # print(logit.shape)
         if logit.dim() > 2:
             # N,C,d1,d2 -> N,C,m (m=d1*d2*...)
             logit = logit.view(logit.size(0), logit.size(1), -1)
-            logit = logit.permute(0, 2, 1).contiguous()
+            logit = logit.permute(0, 1, 2).contiguous()
             logit = logit.view(-1, logit.size(-1))
         target = target.view(-1, 1)
 
+        select=[]
+        for i in range(target.shape[0]):
+            if target[i,0]!=-100:
+                select.append(i)
+
+        select=torch.tensor(select)
+        if select.device != logit.device:
+            select = select.to(logit.device)
+            
+        logit=logit.index_select(dim=0,index=select)
+        target=target.index_select(dim=0,index=select)
+
+
+        idx = target
         epsilon = 1e-10
         alpha = self.alpha
         if alpha.device != input.device:
@@ -71,11 +87,16 @@ class MultiFocalLoss(nn.Module):
         one_hot_key = one_hot_key.scatter_(1, idx, 1)
         if one_hot_key.device != logit.device:
             one_hot_key = one_hot_key.to(logit.device)
+        
+        # print(one_hot_key,one_hot_key.shape)
 
         if self.smooth:
             one_hot_key = torch.clamp(
                 one_hot_key, self.smooth, 1.0 - self.smooth)
-        pt = (one_hot_key * logit).sum(1) + epsilon
+        temp=one_hot_key * logit
+        # print(temp)
+
+        pt = (temp).sum(1) + epsilon
         logpt = pt.log()
 
         gamma = self.gamma
@@ -96,13 +117,17 @@ class FocalLossTrainer(Trainer):
         self.focalloss=MultiFocalLoss()
     def compute_loss(self,model,inputs,return_outputs=False):
         labels = inputs.get("labels")
-        outputs = model(**input)
+        outputs = model(**inputs)
         logits = outputs.get("logits")
+        # print(logits)
+        # print(logits.shape)
+        # print(labels)
+        # print(labels.shape)
         loss = self.focalloss(logits,labels)
         return (loss,outputs) if return_outputs else loss 
 
 if __name__ == "__main__":
-    Predict = torch.tensor([[0, 0, 1000000], [1000000, 0, 0]]).float()
-    Target = torch.tensor([2, 0]).float()
+    Predict = torch.tensor([[[0, 0, 1000000], [1000000, 0, 0]],[[0, 0, 1000000], [1000000, 0, 0]]]).float()
+    Target = torch.tensor([[2, -100],[-100, 0]]).float()
     mul = MultiFocalLoss(3)
     print(mul(Predict, Target))

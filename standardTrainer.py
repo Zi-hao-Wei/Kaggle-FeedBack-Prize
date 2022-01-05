@@ -1,7 +1,7 @@
 from focalloss import FocalLossTrainer
 from Config import getConfig
 from Dataset import getSets
-from transformers import BigBirdForTokenClassification, BigBirdConfig, TrainingArguments, Trainer
+from transformers import AutoModelForTokenClassification, BigBirdConfig, TrainingArguments, Trainer
 import torch
 import numpy as np
 import warnings
@@ -24,7 +24,7 @@ def compute_metrics(p):
 
 if __name__ == "__main__":
     config = getConfig()
-    model = BigBirdForTokenClassification.from_pretrained(
+    model = AutoModelForTokenClassification.from_pretrained(
         config["model_name"], num_labels=15)
     model.to(config["device"])
 
