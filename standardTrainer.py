@@ -12,17 +12,12 @@ warnings.filterwarnings("ignore")
 
 def compute_metrics(p):
     pred, labels = p
-    # print(pred.shape)
-    # print(labels.shape)
     pred = np.argmax(pred, axis=2)
     pred = pred.flatten()
     labels = labels.flatten()
-
     select=[labels!=-100]
-
     labels=np.select(select,[labels])
     pred=np.select(select,[pred])
-
 
     accuracy = metrics.accuracy_score(y_true=labels, y_pred=pred)
     recall = metrics.recall_score(y_true=labels, y_pred=pred,average="weighted")
@@ -31,14 +26,11 @@ def compute_metrics(p):
     print(accuracy,f1)
     return {"accuracy": accuracy, "precision": precision, "recall": recall, "f1": f1}
 
-
 if __name__ == "__main__":
     config = getConfig()
-    Step=16500
+    Step=21000
     checkpoint=f".\output\checkpoint-{Step}"
     model = AutoModelForTokenClassification.from_pretrained(checkpoint,num_labels=15)
-    # model = AutoModelForTokenClassification.from_pretrained(
-        # config["model_name"], num_labels=15)
     model.to(config["device"])
 
     # Define Trainer
@@ -61,6 +53,6 @@ if __name__ == "__main__":
         compute_metrics=compute_metrics,
     )
 
-    trainer.train(f"checkpoint-{Step}")
+    trainer.train(checkpoint)
     trainer.evaluate()
     model.save_pretained("BigBirdFinetune")

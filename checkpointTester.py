@@ -13,7 +13,7 @@ if __name__ == "__main__":
     config = getConfig()
     training_set,training_loader,testing_set,testing_loader = getSets()
 
-    for Step in range(500,16500,500):
+    for Step in range(21500,23500,500):
         model_name=f".\output\checkpoint-{Step}"
         print(model_name)
         model = AutoModelForTokenClassification.from_pretrained(
